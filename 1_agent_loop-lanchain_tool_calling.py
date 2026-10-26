@@ -66,7 +66,7 @@ def run_agent(question: str) -> str:
         
         ai_message = llm_with_tools.invoke(messages)
 
-        tool_calls = llm_with_tools.get_tool_calls(ai_message)
+        tool_calls = ai_message.tool_calls
 
         if not tool_calls:
             print(f"--Final Answer--: {ai_message.content}")
@@ -80,21 +80,20 @@ def run_agent(question: str) -> str:
 
         print(f"    >>> Tool Call: {tool_name} with args: {tool_args}")
 
-        tool_to_use = tools_dict.get(tool_name)
+        tool_to_use = tool_dict.get(tool_name)
         if tool_to_use is None:
-            raise ValueError(f"Tool {tool_name} not found in tools_dict")
+            raise ValueError(f"Tool {tool_name} not found in tool_dict")
 
         observation = tool_to_use.invoke(tool_args)
 
         print(f"[Tool Result] {observation}")
-      
 
-  
-    
-    for i in range(MAX_ITERATIONS):
-        response = llm_with_tools.invoke(messages)
-        messages.append(response)
-        print(f"    >>> Iteration {i+1} response: {response.content}")
+        # Keep only the tool call we executed so every call in history has a matching ToolMessage
+        messages.append(ai_message.model_copy(update={"tool_calls": [tool_call]}))
+        messages.append(ToolMessage(content=str(observation), tool_call_id=tool_call_id))
+
+    print("ERROR: Max iterations reached without a final answer")
+    return None
 
  
 
