@@ -50,8 +50,8 @@ tools_for_llm = [
                         "description": "The name of the product"
                     },
                 },
+                "required": ["product_name"],
             },
-            "required": ["product_name"],
         }
     },
     {
@@ -71,8 +71,8 @@ tools_for_llm = [
                         "description": "The discount tier to apply"
                     },
                 },
+                "required": ["price", "discount_tier"],
             },
-            "required": ["price", "discount_tier"],
         }
     }
 ]
@@ -103,20 +103,20 @@ def ollama_chat_traced(messages):
 
 
 # --- agent loop with tool calling ---
-@traceable(name="Langchain Tool Calling Agent")
+@traceable(name="Ollama agent loop")
 def run_agent(question: str) -> str:
-    tools = {
-        get_product_price : get_product_price, 
-        apply_discount : apply_discount
-        }
+    tool_dict = {
+        "get_product_price": get_product_price,
+        "apply_discount": apply_discount,
+    }
 
     print(f"    >>> Starting agent loop with question: {question}")
     print("="*60)
     
     messages = [
         {
-            role:"system",
-            content:(
+            "role": "system",
+            "content": (
                 """
                  You are the helpfull shopping assistant
                  you can access to a product catalog tool 
@@ -145,17 +145,18 @@ def run_agent(question: str) -> str:
         #difference 5:ollama.chat() directly instead of llm_with_tools.invoke()
         response = ollama_chat_traced(messages=messages)
         ai_message = response.message
-        
+        tool_calls = ai_message.tool_calls
 
         if not tool_calls:
             print(f"--Final Answer--: {ai_message.content}")
             return ai_message.content
-  
+
         # Process only one tool call per iteration (force)
+        # Ollama tool calls have no id: name/arguments live under tool_call.function
         tool_call = tool_calls[0]
-        tool_name = tool_call.get("name")
-        tool_args = tool_call.get("args")
-        tool_call_id = tool_call.get("id")
+        # Difference 6:Attributes access (.function.name)instead of dict access (.get("name"))
+        tool_name = tool_call.function.name
+        tool_args = tool_call.function.arguments
 
         print(f"    >>> Tool Call: {tool_name} with args: {tool_args}")
 
@@ -163,13 +164,20 @@ def run_agent(question: str) -> str:
         if tool_to_use is None:
             raise ValueError(f"Tool {tool_name} not found in tool_dict")
 
-        observation = tool_to_use.invoke(tool_args)
+        # Plain functions (no @tool), so call them directly instead of .invoke()
+        #Difference 7: Direct fuction calling instead of .invoke()
+        observation = tool_to_use(**tool_args)
 
         print(f"[Tool Result] {observation}")
 
-        # Keep only the tool call we executed so every call in history has a matching ToolMessage
+        # Keep only the tool call we executed so every call in history has a matching tool message
         messages.append(ai_message.model_copy(update={"tool_calls": [tool_call]}))
-        messages.append(ToolMessage(content=str(observation), tool_call_id=tool_call_id))
+        #Difference 8: Tool message format changed to {"role": "tool", "content": str(observation), "tool_name": tool_name}
+        messages.append(
+            {
+                "role": "tool",
+                "content": str(observation), 
+                "tool_name": tool_name})
 
     print("ERROR: Max iterations reached without a final answer")
     return None
