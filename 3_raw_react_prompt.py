@@ -79,7 +79,7 @@ Final Answer: the final answer to the original input question
 
 Begin!
 
-Question: {question}
+Question: {{question}}
 Thought:
 
 """
@@ -89,7 +89,7 @@ Thought:
 
 @traceable(name="Ollama Chat",run_type = "llm")
 def ollama_chat_traced(model ,messages , options ):
-    return ollama.chat(model=model,messages=messages,option=options)
+    return ollama.chat(model=model,messages=messages,options=options)
 
 
 
