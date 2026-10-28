@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import re
+import json
 import inspect
 load_dotenv()
 from langchain.chat_models import init_chat_model
@@ -30,7 +31,8 @@ def apply_discount(price: float, discount_tier: str) -> float:
     print(f"    >>> Executing tool apply_discount for price: {price} and discount_tier: {discount_tier}")
     discount_tiers = {"bronze": 5, "silver": 12, "gold": 20}
     discount = discount_tiers.get(discount_tier, 0)
-    return round(price * (1 - discount / 100), 2)
+    # Args parsed from LLM text arrive as strings, so convert the price
+    return round(float(price) * (1 - discount / 100), 2)
 
 tools = {
     "get_product_price": get_product_price,
@@ -132,7 +134,7 @@ def run_agent(question: str) -> str:
 
         if not action_matches or not acttion_input_matches:
             print(
-                "  [Parsing] ERROR: No Action or Action Input found in LLM output"
+                "  [Parsing] ERROR: No Action or Action Input found in LLM outpu t"
             )
             break
 
@@ -140,26 +142,29 @@ def run_agent(question: str) -> str:
         tool_input_raw = acttion_input_matches.group(1).strip()
         print(f"    >>> Tool Call: {tool_name} with args: {tool_input_raw}")
 
-        #CHANGE 7: Split comma-separated args; strip key = prefix if LLM outputs key = value format 
-        raw_args = [x.strip() for x in tool_input_raw.split(",")]
-        args = [x.split("=",1) [-1].strip().strip("\"'") for x in raw_args]
+        #CHANGE 7: The LLM may output JSON ({"price": 1000, ...}) -- if so, pass it as keyword args
+        # Otherwise split comma-separated args; strip key = prefix if LLM outputs key = value format
+        args, kwargs = [], {}
+        try:
+            parsed = json.loads(tool_input_raw)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, dict):
+            kwargs = parsed
+        else:
+            raw_args = [x.strip() for x in tool_input_raw.split(",")]
+            args = [x.split("=",1) [-1].strip().strip("\"'") for x in raw_args]
 
-        print(f"    >>> Executing :{tool_name} with args: {args}")
+        print(f"    >>> Executing :{tool_name} with args: {args or kwargs}")
         if tool_name not in tools:
             observation = f"ERROR: Tool {tool_name} not found in tool_dict , available tools are: {tools.keys()}"
         else:
-            observation = str(tools[tool_name](*args))
+            observation = str(tools[tool_name](*args, **kwargs))
 
         print(f"[Tool Result] {observation}")
 
-        # Keep only the tool call we executed so every call in history has a matching tool message
-        messages.append(ai_message.model_copy(update={"tool_calls": [tool_call]}))
-        #Difference 8: Tool message format changed to {"role": "tool", "content": str(observation), "tool_name": tool_name}
-        messages.append(
-            {
-                "role": "tool",
-                "content": str(observation), 
-                "tool_name": tool_name})
+        #CHANGE 8: No messages list -- append the LLM output and observation to the scratchpad as plain text
+        scratchpad += f"{output}\nObservation: {observation}\nThought:"
 
     print("ERROR: Max iterations reached without a final answer")
     return None
