@@ -114,29 +114,41 @@ def run_agent(question: str) -> str:
             messages=[{"role": "user", "content": full_prompt}],
             options={"stop": ["\nObservation:", "temperature:0"]}
         )
-        ai_message = response.message
-        tool_calls = ai_message.tool_calls
+        output = response.message.content
+        print(f"    >>> Response: {output}")
+ 
+      
+        final_anwer_match = re.search(r"Final Answer:\s*(.+)", output)
+        if final_anwer_match:
+            final_answer = final_anwer_match.group(1).strip()
+            print("\n"+"="*60)
+            print(f"    >>> Final Answer: {final_answer}")
+            return final_answer
 
-        if not tool_calls:
-            print(f"--Final Answer--: {ai_message.content}")
-            return ai_message.content
+        #CHANGE 6: Parse tool calls from response text using regex
+        print(f"  [Parsing] Looking for Action and Action Input  in LLM output ... ")
+        action_matches = re.search(r"Action:\s*(.+)", output)
+        acttion_input_matches = re.search(r"Action Input:\s*(.+)", output)
 
-        # Process only one tool call per iteration (force)
-        # Ollama tool calls have no id: name/arguments live under tool_call.function
-        tool_call = tool_calls[0]
-        # Difference 6:Attributes access (.function.name)instead of dict access (.get("name"))
-        tool_name = tool_call.function.name
-        tool_args = tool_call.function.arguments
+        if not action_matches or not acttion_input_matches:
+            print(
+                "  [Parsing] ERROR: No Action or Action Input found in LLM output"
+            )
+            break
 
-        print(f"    >>> Tool Call: {tool_name} with args: {tool_args}")
+        tool_name = action_matches.group(1).strip()
+        tool_input_raw = acttion_input_matches.group(1).strip()
+        print(f"    >>> Tool Call: {tool_name} with args: {tool_input_raw}")
 
-        tool_to_use = tool_dict.get(tool_name)
-        if tool_to_use is None:
-            raise ValueError(f"Tool {tool_name} not found in tool_dict")
+        #CHANGE 7: Split comma-separated args; strip key = prefix if LLM outputs key = value format 
+        raw_args = [x.strip() for x in tool_input_raw.split(",")]
+        args = [x.split("=",1) [-1].strip().strip("\"'") for x in raw_args]
 
-        # Plain functions (no @tool), so call them directly instead of .invoke()
-        #Difference 7: Direct fuction calling instead of .invoke()
-        observation = tool_to_use(**tool_args)
+        print(f"    >>> Executing :{tool_name} with args: {args}")
+        if tool_name not in tools:
+            observation = f"ERROR: Tool {tool_name} not found in tool_dict , available tools are: {tools.keys()}"
+        else:
+            observation = str(tools[tool_name](*args))
 
         print(f"[Tool Result] {observation}")
 
