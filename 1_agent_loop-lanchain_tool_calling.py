@@ -6,6 +6,8 @@ from langchain.tools import tool
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langsmith import traceable 
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+import os
 
 MAX_ITERATIONS = 10
 MODEL = "qwen3:1.7b"
@@ -35,6 +37,13 @@ def run_agent(question: str) -> str:
     tool_dict = {tool.name: tool for tool in tools}
 
     llm = ChatOllama(model="qwen3:1.7b" , temperature=0)
+    # llm = ChatOpenAI(
+    # model="openai/gpt-4o-mini",
+    # api_key=os.getenv("OPENROUTER_API_KEY"),
+    # base_url="https://openrouter.ai/api/v1",
+    # temperature=0,
+    # )
+
     llm_with_tools = llm.bind_tools(tools)
 
     print(f"    >>> Starting agent loop with question: {question}")
@@ -56,6 +65,9 @@ def run_agent(question: str) -> str:
                  3. Never Calculate discounts yourself using maths
                  always use apply_discount tool with the exact price returned by get_product_price
                  4. If user does not specify a discount tier, ask them for which discount tier they want to apply- do not assume one
+                 5. The catalog uses simple product names: laptop, phone, tablet. If the user names one of
+   these and a discount tier, call the tools immediately without asking for confirmation.
+
                 """
             )),
         HumanMessage(content=question),
