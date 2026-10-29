@@ -1,4 +1,5 @@
 import os
+from operator import itemgetter
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 #
@@ -54,7 +55,7 @@ def retrieval_chain_without_lcel(query:str):
    Simple retrieval chain without LCEL 
    Manually retrieves documents, formats them, and invokes the LLM
 
-   Limitations:
+   Limitations:                                                                                                                         
    -Manual step by step ececution 
    -No build in streaming support
    -No sync support without additional code 
@@ -101,8 +102,10 @@ def create_retrieval_chain_with_lcel():
     - Better debugging: LangChain provides better observability tools
     """
 
-    retrieval_chain =( 
-        RunnablePassthrough.assign(context=format_docs) | retriever | format_docs |
+    # Input is {"question": ...}; assign() keeps "question" and adds "context"
+    # (question -> retriever -> formatted docs), so the prompt gets both variables
+    retrieval_chain =(
+        RunnablePassthrough.assign(context=itemgetter("question") | retriever | format_docs) |
         prompt |
         llm |
         StrOutputParser()
@@ -157,4 +160,5 @@ if __name__ == "__main__":
     print("=" * 70)
     print("\nAnswer")
     retrieval_chain = create_retrieval_chain_with_lcel()
-    result_with_lcel = retrieval_chain.invoke(query)
+    result_with_lcel = retrieval_chain.invoke({"question": query})
+    print(result_with_lcel)
