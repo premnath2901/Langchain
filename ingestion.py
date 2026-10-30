@@ -49,7 +49,7 @@ async def main():
 
 
   log_info(
-        "🗺️  TavilyCrawl: Starting to crawl the documentation site",
+        "🗺️  TavilyCrawl: Starting to crawl the documentation site : https://python.langchain.com/",
         Colors.PURPLE,
     )
 
@@ -60,12 +60,15 @@ async def main():
             "url": "https://python.langchain.com/",
             "max_depth": 1,
             "extract_depth": "advanced",
+            "instructions": "content on ai agent "
         }
     )
+  # TavilyCrawl returns {"base_url", "results": [{"url", "raw_content"}, ...], ...}
+  # all_docs = res["results"]
+  all_docs = [Document(page_content=page["raw_content"], metadata={"source": page["url"]}) for page in res["results"] if page.get("raw_content")]
 
   log_success(
-        "🗺️  TavilyCrawl: Crawling completed successfully",
-        Colors.GREEN,
+        f"🗺️  TavilyCrawl: Crawling completed successfully - {len(all_docs)} pages",
     )
 
 
