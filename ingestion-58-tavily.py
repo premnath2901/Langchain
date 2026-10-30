@@ -40,6 +40,11 @@ embeddings = OpenAIEmbeddings(
 vectorstore = PineconeVectorStore(index_name=os.environ["INDEX_NAME"], embedding=embeddings)
 tavily_extract = TavilyExtract()
 tavily_map = TavilyMap(max_depth=5, max_breadth=20, max_pages=1000)
+# tavily_map = TavilyMap(
+#     max_depth=3,
+#     allow_external=False,                        # don't leave the site
+#     select_domains=[r"^docs\.langchain\.com$"],  # only this website
+# )
 tavily_crawl = TavilyCrawl()
 
 #Batching the URLs
@@ -59,21 +64,43 @@ async def main():
 
 
   log_info(
-        "🗺️  TavilyMap: Starting to map the documentation site : https://python.langchain.com/",
+        "🗺️  TavilyMap: Starting to map the documentation site : https://docs.langchain.com/",
         Colors.PURPLE,
     )
 
-      # Crawl the documentation site
+ #=========================================================
+ # map the documentation site
+ #=========================================================
 
-  site_map = tavily_map.invoke( "https://python.langchain.com/")
+  site_map = tavily_map.invoke( "https://docs.langchain.com/")
   #split then map into 20 batches
   url_batches = chunk_urls(list(site_map["results"]),chunk_size=20)
 
   log_success(
         f"🗺️  TavilyMap: Mapping completed successfully - {len(site_map['results'])} pages  URLs in {len(url_batches)} batches",
     )
-  
+
+  # Print every batch and the URLs inside it
+  for batch_num, batch in enumerate(url_batches, start=1):
+      log_info(f"📦 Batch {batch_num}/{len(url_batches)} - {len(batch)} URLs", Colors.CYAN)
+      for url in batch:
+          print(f"     - {url}")
+
+ #=========================================================
+ # extract the content from the documentation site
+ #=========================================================
  
+ async def extract_batch(urls: List[str], batch_num: int) -> List[Dict[str, Any]]:
+    """Extract documents from a batch of URLs."""
+    try:
+        log_info(f"🔄 Processing batch {batch_num} with {len(urls)} URLs", Colors.BLUE)
+        docs = await tavily_extract.ainvoke(input={"urls": urls})
+        results = docs.get('results', [])
+        log_success(f"✅ Batch {batch_num} completed - extracted {len(results)} documents", Colors.GREEN)
+        return results
+    except Exception as e:
+        log_error(f"❌ Batch {batch_num} failed: {e}", Colors.RED)
+        return []
 
 
 if __name__ == "__main__":
