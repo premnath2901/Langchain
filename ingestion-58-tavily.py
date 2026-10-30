@@ -119,12 +119,13 @@ async def async_extract(urls_batches: List[List[str]]) -> List[Document]:
 #=========================================================
     all_pages =[]
     failed_pages =0
-    for batch_results in results:
-       if isinstance(results, Exception):
-         log_error(f"❌ Batch {batch_num} failed: {results}", Colors.RED)
+    # Each item in results is the list of pages extracted_batch() returned for one batch
+    for batch_num, batch_results in enumerate(results, start=1):
+       if isinstance(batch_results, Exception):
+         log_error(f"❌ Batch {batch_num} failed: {batch_results}", Colors.RED)
          failed_pages += 1
        else:
-        for extracted_page in results["results"]:  #type: ignore
+        for extracted_page in batch_results:
             doc = Document(
                 page_content=extracted_page["raw_content"],
                 metadata={"source": extracted_page["url"]},

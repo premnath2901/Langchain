@@ -17,19 +17,19 @@ def log_info(message: str, color: str = Colors.CYAN):
     print(f"{color}ℹ️  {message}{Colors.END}")
 
 
-def log_success(message: str):
+def log_success(message: str, color: str = Colors.GREEN):
     """Log success message in green"""
-    print(f"{Colors.GREEN}✅ {message}{Colors.END}")
+    print(f"{color}✅ {message}{Colors.END}")
 
 
-def log_error(message: str):
+def log_error(message: str, color: str = Colors.RED):
     """Log error message in red"""
-    print(f"{Colors.RED}❌ {message}{Colors.END}")
+    print(f"{color}❌ {message}{Colors.END}")
 
 
-def log_warning(message: str):
+def log_warning(message: str, color: str = Colors.YELLOW):
     """Log warning message in yellow"""
-    print(f"{Colors.YELLOW}⚠️  {message}{Colors.END}")
+    print(f"{color}⚠️  {message}{Colors.END}")
 
 
 def log_header(message: str):
