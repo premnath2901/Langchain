@@ -85,22 +85,58 @@ async def main():
       log_info(f"📦 Batch {batch_num}/{len(url_batches)} - {len(batch)} URLs", Colors.CYAN)
       for url in batch:
           print(f"     - {url}")
+#callingggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg
+  all_pages = await async_extract(url_batches)
 
  #=========================================================
  # extract the content from the documentation site
  #=========================================================
  
- async def extract_batch(urls: List[str], batch_num: int) -> List[Dict[str, Any]]:
+async def extract_batch(urls: List[str], batch_num: int) -> List[Dict[str, Any]]:
     """Extract documents from a batch of URLs."""
     try:
-        log_info(f"🔄 Processing batch {batch_num} with {len(urls)} URLs", Colors.BLUE)
+        log_info(
+            f"🔄 Processing batch {batch_num} with {len(urls)} URLs", Colors.BLUE
+            )
         docs = await tavily_extract.ainvoke(input={"urls": urls})
         results = docs.get('results', [])
-        log_success(f"✅ Batch {batch_num} completed - extracted {len(results)} documents", Colors.GREEN)
+        log_success(
+            f"✅ Batch {batch_num} completed - extracted {len(results)} documents", Colors.GREEN
+            )
         return results
     except Exception as e:
         log_error(f"❌ Batch {batch_num} failed: {e}", Colors.RED)
         return []
+
+async def async_extract(urls_batches: List[List[str]]) -> List[Document]:
+    log_header("DOCUMENTATION INGESTION PIPELINE")
+    log_info("🔄 Extracting documents from the documentation site", Colors.BLUE)
+    tasks = [extract_batch(batch,i+1) for i, batch in enumerate(urls_batches)]
+    results = await asyncio.gather(*tasks)
+
+#=========================================================
+# Filter out the pages that are not in the documentation site
+#=========================================================
+    all_pages =[]
+    failed_pages =0
+    for batch_results in results:
+       if isinstance(results, Exception):
+         log_error(f"❌ Batch {batch_num} failed: {results}", Colors.RED)
+         failed_pages += 1
+       else:
+        for extracted_page in results["results"]:  #type: ignore
+            doc = Document(
+                page_content=extracted_page["raw_content"],
+                metadata={"source": extracted_page["url"]},
+            )
+            all_pages.append(doc)
+    log_success(f"✅ Extracted {len(all_pages)} pages from {len(all_pages)} pages successfully", Colors.GREEN)
+    if failed_pages > 0:
+        log_error(f"❌ Failed to extract {failed_pages} pages", Colors.RED)
+    return all_pages
+
+
+
 
 
 if __name__ == "__main__":
