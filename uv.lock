@@ -476,12 +476,6 @@ wheels = [
 ]
 
 [[package]]
-name = "chroma"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9f/f0/e747fa78cd8ff7d23a598ab21b79988b759c2248500e0d31f21620cb75f3/Chroma-0.2.0.tar.gz", hash = "sha256:e265bcd503e2b35c4448b83257467166c252ecf3ab610492432780691cdfb286", size = 5790, upload-time = "2013-02-01T20:43:22.781Z" }
-
-[[package]]
 name = "chromadb"
 version = "1.5.9"
 source = { registry = "https://pypi.org/simple" }
@@ -1270,7 +1264,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "black" },
-    { name = "chroma" },
     { name = "isort" },
     { name = "langchain" },
     { name = "langchain-chroma" },
@@ -1285,7 +1278,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "black", specifier = ">=26.10.1" },
-    { name = "chroma", specifier = ">=0.2.0" },
     { name = "isort", specifier = ">=9.0.2" },
     { name = "langchain", specifier = ">=1.4.7" },
     { name = "langchain-chroma", specifier = ">=1.1.0" },
