@@ -17,7 +17,7 @@ embeddings = OpenAIEmbeddings(
            model="openai/text-embedding-3-small",
            api_key=os.environ["OPENROUTER_API_KEY"],
            base_url="https://openrouter.ai/api/v1",
-          
+           check_embedding_ctx_length=False,  # send plain text, not OpenAI-specific token arrays
 )
 
 #Initialize vector store
@@ -29,6 +29,7 @@ vectorstore = PineconeVectorStore(
 
 model = init_chat_model(
     model="deepseek/deepseek-v4-flash",
+    model_provider="openai",  # OpenRouter speaks the OpenAI API -- without this, "deepseek/" makes LangChain look for langchain-deepseek
     api_key=os.environ["OPENROUTER_API_KEY"],
     base_url="https://openrouter.ai/api/v1",
 )
